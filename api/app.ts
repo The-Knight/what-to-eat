@@ -13,26 +13,25 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
-// Initialize database
-initDatabase();
-
 const app: express.Application = express();
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve uploaded images
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Serve uploaded images locally (only used in local mode)
+if (db.isLocal()) {
+  app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+}
 
 // API Routes
 app.use('/api/recipes', recipeRoutes);
 app.use('/api/upload', uploadRoutes);
 
 // Categories route (alias)
-app.get('/api/categories', (_req: Request, res: Response) => {
-  const categories = db.prepare('SELECT * FROM categories ORDER BY sort_order').all();
-  res.json({ success: true, data: categories });
+app.get('/api/categories', async (_req: Request, res: Response) => {
+  const result = await db.execute('SELECT * FROM categories ORDER BY sort_order');
+  res.json({ success: true, data: result.rows });
 });
 
 // Error handler
@@ -45,5 +44,8 @@ app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ success: false, error: 'API not found' });
 });
+
+// Initialize database on startup
+initDatabase().catch(console.error);
 
 export default app;

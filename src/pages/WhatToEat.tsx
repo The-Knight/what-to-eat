@@ -118,7 +118,7 @@ export default function WhatToEat() {
                 >
                   <div className="w-16 h-16 rounded-xl overflow-hidden bg-primary/5 shrink-0">
                     {recipe.cover_image ? (
-                      <img src={recipe.cover_image} alt={recipe.name} className="w-full h-full object-cover" />
+                      <img src={recipe.cover_image} alt={recipe.name} loading="lazy" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-2xl opacity-40">🍳</div>
                     )}

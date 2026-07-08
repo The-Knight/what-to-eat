@@ -1,20 +1,25 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
+import { createClient, type DatabaseClient } from './client.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const rootDir = path.resolve(__dirname, '../..');
+let _db: DatabaseClient | null = null;
 
-const dataDir = path.join(rootDir, 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+function getDb(): DatabaseClient {
+  if (!_db) {
+    _db = createClient();
+  }
+  return _db;
 }
 
-const db = new Database(path.join(dataDir, 'recipes.db'));
-
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+// Use Proxy so `db.execute()` etc. work transparently
+const db: DatabaseClient = new Proxy({} as DatabaseClient, {
+  get(_target, prop, _receiver) {
+    const client = getDb();
+    const value = (client as any)[prop];
+    if (typeof value === 'function') {
+      return value.bind(client);
+    }
+    return value;
+  },
+});
 
 export default db;
+export type { DatabaseClient } from './client.js';

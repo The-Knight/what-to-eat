@@ -37,3 +37,16 @@ body {
   background-color: #E8553A;
   border-radius: 3px;
 }
+
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Hide bottom nav on larger screens */
+@media (min-width: 640px) {
+  .bottom-nav-spacer {
+    display: none;
+  }
+}

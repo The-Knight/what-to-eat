@@ -3,6 +3,7 @@ import Home from "@/pages/Home";
 import RecipeDetail from "@/pages/RecipeDetail";
 import RecipeEdit from "@/pages/RecipeEdit";
 import WhatToEat from "@/pages/WhatToEat";
+import BottomNav from '@/components/BottomNav';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/recipe/:id" element={<RecipeDetail />} />
         <Route path="/recipe/:id/edit" element={<RecipeEdit />} />
       </Routes>
+      <BottomNav />
     </Router>
   );
 }

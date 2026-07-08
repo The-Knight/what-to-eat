@@ -1,13 +1,15 @@
 import db from './index.js';
 
-export function initDatabase() {
-  db.exec(`
+export async function initDatabase() {
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
       sort_order INTEGER DEFAULT 0
     );
+  `);
 
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS recipes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -26,29 +28,23 @@ export function initDatabase() {
   `);
 
   // 只在首次启动（recipes表为空）时才初始化分类和菜谱数据
-  const recipeCount = db.prepare('SELECT COUNT(*) as count FROM recipes').get() as { count: number };
+  const { rows: recipeCountRows } = await db.execute('SELECT COUNT(*) as count FROM recipes');
+  const recipeCount = recipeCountRows[0] as { count: number };
   if (recipeCount.count === 0) {
     // 检查分类是否已存在，避免重复插入
-    const categoryCount = db.prepare('SELECT COUNT(*) as count FROM categories').get() as { count: number };
+    const { rows: categoryCountRows } = await db.execute('SELECT COUNT(*) as count FROM categories');
+    const categoryCount = categoryCountRows[0] as { count: number };
     if (categoryCount.count === 0) {
-      const insertCategory = db.prepare('INSERT INTO categories (name, sort_order) VALUES (?, ?)');
       const categories: [string, number][] = [
         ['家常菜', 1], ['汤品', 2], ['甜点', 3], ['主食', 4],
       ];
-      const insertCategories = db.transaction((items: [string, number][]) => {
-        for (const [name, order] of items) {
-          insertCategory.run(name, order);
-        }
-      });
-      insertCategories(categories);
+      await db.batch(categories.map(([name, order]) => ({
+        sql: 'INSERT INTO categories (name, sort_order) VALUES (?, ?)',
+        args: [name, order],
+      })));
     }
 
     // Seed sample recipes
-    const insertRecipe = db.prepare(`
-      INSERT INTO recipes (name, category_id, difficulty, cook_time, cover_image, ingredients, steps, tips, dish_type)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
     const sampleRecipes = [
       {
         name: '番茄炒蛋',
@@ -372,15 +368,16 @@ export function initDatabase() {
       },
     ];
 
-    const insertRecipes = db.transaction((recipes: typeof sampleRecipes) => {
-      for (const recipe of recipes) {
-        insertRecipe.run(
+    for (const recipe of sampleRecipes) {
+      await db.execute(
+        `INSERT INTO recipes (name, category_id, difficulty, cook_time, cover_image, ingredients, steps, tips, dish_type)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
           recipe.name, recipe.category_id, recipe.difficulty, recipe.cook_time,
           recipe.cover_image, recipe.ingredients, recipe.steps, recipe.tips,
-          (recipe as any).dish_type || '荤菜'
-        );
-      }
-    });
-    insertRecipes(sampleRecipes);
+          (recipe as any).dish_type || '荤菜',
+        ]
+      );
+    }
   }
 }

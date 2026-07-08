@@ -4,7 +4,7 @@ import db from '../db/index.js';
 const router = Router();
 
 // Get all recipes (with optional category filter and search)
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   const { category, search } = req.query;
 
   let query = `
@@ -27,9 +27,9 @@ router.get('/', (req: Request, res: Response) => {
 
   query += ' ORDER BY r.created_at DESC';
 
-  const recipes = db.prepare(query).all(...params);
+  const result = await db.execute(query, params);
 
-  const parsed = recipes.map((r: any) => ({
+  const parsed = result.rows.map((r: any) => ({
     ...r,
     ingredients: JSON.parse(r.ingredients || '[]'),
     steps: JSON.parse(r.steps || '[]'),
@@ -39,26 +39,27 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 // Get categories
-router.get('/categories/list', (req: Request, res: Response) => {
-  const categories = db.prepare('SELECT * FROM categories ORDER BY sort_order').all();
-  res.json({ success: true, data: categories });
+router.get('/categories/list', async (req: Request, res: Response) => {
+  const result = await db.execute('SELECT * FROM categories ORDER BY sort_order');
+  res.json({ success: true, data: result.rows });
 });
 
 // Get single recipe
-router.get('/:id', (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
-  const recipe = db.prepare(`
+  const result = await db.execute(`
     SELECT r.*, c.name as category_name
     FROM recipes r
     LEFT JOIN categories c ON r.category_id = c.id
     WHERE r.id = ?
-  `).get(id) as any;
+  `, [id]);
 
-  if (!recipe) {
+  if (result.rows.length === 0) {
     res.status(404).json({ success: false, error: '菜谱不存在' });
     return;
   }
 
+  const recipe = result.rows[0];
   res.json({
     success: true,
     data: {
@@ -70,13 +71,13 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // Create recipe
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   const { name, category_id, difficulty, cook_time, cover_image, ingredients, steps, tips, dish_type } = req.body;
 
-  const result = db.prepare(`
+  const result = await db.execute(`
     INSERT INTO recipes (name, category_id, difficulty, cook_time, cover_image, ingredients, steps, tips, dish_type)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+  `, [
     name,
     category_id || null,
     difficulty || 1,
@@ -86,9 +87,12 @@ router.post('/', (req: Request, res: Response) => {
     JSON.stringify(steps || []),
     tips || '',
     dish_type || '荤菜'
-  );
+  ]);
 
-  const recipe = db.prepare('SELECT * FROM recipes WHERE id = ?').get(result.lastInsertRowid) as any;
+  const insertedId = result.rows[0].lastInsertRowid;
+  const recipeResult = await db.execute('SELECT * FROM recipes WHERE id = ?', [insertedId]);
+  const recipe = recipeResult.rows[0];
+
   res.json({
     success: true,
     data: {
@@ -100,24 +104,24 @@ router.post('/', (req: Request, res: Response) => {
 });
 
 // Update recipe
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
   const { name, category_id, difficulty, cook_time, cover_image, ingredients, steps, tips, dish_type } = req.body;
 
-  const existing = db.prepare('SELECT * FROM recipes WHERE id = ?').get(id);
-  if (!existing) {
+  const existing = await db.execute('SELECT * FROM recipes WHERE id = ?', [id]);
+  if (existing.rows.length === 0) {
     res.status(404).json({ success: false, error: '菜谱不存在' });
     return;
   }
 
-  db.prepare(`
+  await db.execute(`
     UPDATE recipes SET
       name = ?, category_id = ?, difficulty = ?, cook_time = ?,
       cover_image = ?, ingredients = ?, steps = ?, tips = ?,
       dish_type = ?,
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
-  `).run(
+  `, [
     name,
     category_id || null,
     difficulty || 1,
@@ -128,9 +132,11 @@ router.put('/:id', (req: Request, res: Response) => {
     tips || '',
     dish_type || '荤菜',
     id
-  );
+  ]);
 
-  const recipe = db.prepare('SELECT * FROM recipes WHERE id = ?').get(id) as any;
+  const recipeResult = await db.execute('SELECT * FROM recipes WHERE id = ?', [id]);
+  const recipe = recipeResult.rows[0];
+
   res.json({
     success: true,
     data: {
@@ -142,11 +148,11 @@ router.put('/:id', (req: Request, res: Response) => {
 });
 
 // Delete recipe
-router.delete('/:id', (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = db.prepare('DELETE FROM recipes WHERE id = ?').run(id);
+  const result = await db.execute('DELETE FROM recipes WHERE id = ?', [id]);
 
-  if (result.changes === 0) {
+  if (result.rows[0].changes === 0) {
     res.status(404).json({ success: false, error: '菜谱不存在' });
     return;
   }

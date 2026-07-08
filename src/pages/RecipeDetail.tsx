@@ -40,7 +40,7 @@ export default function RecipeDetail() {
       {/* Cover Image */}
       <div className="relative h-[40vh] bg-brown/10 mt-16">
         {recipe.cover_image ? (
-          <img src={recipe.cover_image} alt={recipe.name} className="w-full h-full object-cover" />
+          <img src={recipe.cover_image} alt={recipe.name} loading="lazy" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-8xl opacity-30">🍳</div>
         )}
