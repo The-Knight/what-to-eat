@@ -1,57 +1,65 @@
-# React + TypeScript + Vite
+# 今天吃什么
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一个帮你决定每天吃什么的菜谱管理应用。不知道吃什么？选好几荤几素，让命运来决定！
 
-Currently, two official plugins are available:
+## 功能特点
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **菜谱管理**：支持新建、编辑、删除菜谱，包含食材用量、烹饪步骤、小贴士等完整信息
+- **荤素分类**：每道菜标记荤菜/素菜，卡片上直观显示
+- **随机选菜**：选择想要的荤菜和素菜数量，一键随机搭配今天的菜单
+- **分类筛选**：支持按家常菜、汤品、甜点、主食分类浏览
+- **搜索功能**：按菜名搜索菜谱
+- **图片上传**：支持上传菜谱封面图
+- **响应式设计**：适配手机和电脑端
 
-## Expanding the ESLint configuration
+## 技术栈
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| 层级 | 技术 |
+|------|------|
+| 前端 | React 18 + TypeScript + Vite |
+| 样式 | Tailwind CSS |
+| 状态管理 | Zustand |
+| 后端 | Express.js |
+| 数据库 | SQLite (better-sqlite3) |
+| 图标 | Lucide React |
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## 快速开始
+
+```bash
+# 安装依赖
+npm install
+
+# 启动开发服务器（同时启动前端和后端）
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+启动后访问 http://localhost:5173
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 项目结构
 
-export default tseslint.config({
-  extends: [
-    // other configs...
-    // Enable lint rules for React
-    reactX.configs['recommended-typescript'],
-    // Enable lint rules for React DOM
-    reactDom.configs.recommended,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
 ```
+├── api/                    # 后端代码
+│   ├── db/                 # 数据库配置和种子数据
+│   ├── routes/             # API 路由
+│   ├── app.ts              # Express 应用配置
+│   └── server.ts           # 服务器入口
+├── src/                    # 前端代码
+│   ├── components/         # 通用组件（Navbar、RecipeCard 等）
+│   ├── pages/              # 页面组件
+│   ├── store/              # Zustand 状态管理
+│   └── utils/              # API 客户端和类型定义
+├── uploads/                # 上传的图片（git 忽略）
+└── data/                   # SQLite 数据库文件（git 忽略）
+```
+
+## API 接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/recipes` | 获取菜谱列表（支持 ?category= 和 ?search= 筛选） |
+| GET | `/api/recipes/:id` | 获取单个菜谱详情 |
+| POST | `/api/recipes` | 新建菜谱 |
+| PUT | `/api/recipes/:id` | 更新菜谱 |
+| DELETE | `/api/recipes/:id` | 删除菜谱 |
+| GET | `/api/categories` | 获取分类列表 |
+| POST | `/api/upload` | 上传图片 |
