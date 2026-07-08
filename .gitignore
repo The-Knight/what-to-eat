@@ -12,10 +12,9 @@ dist
 dist-ssr
 *.local
 
-# Database and uploads
-data/
-uploads/
-*.db
+# SQLite temp files (keep the main .db)
+data/*.db-shm
+data/*.db-wal
 
 # Temp scripts
 add-*.mjs
@@ -24,6 +23,7 @@ regen*.mjs
 copy-*.mjs
 download-*.mjs
 redownload*.mjs
+checkpoint.mjs
 
 # IDE / TRAE
 .trae/
