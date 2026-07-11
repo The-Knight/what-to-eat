@@ -2,7 +2,6 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tsconfigPaths from "vite-tsconfig-paths";
 import { traeBadgePlugin } from 'vite-plugin-trae-solo-badge';
-import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -11,56 +10,6 @@ export default defineConfig({
       babel: {
         plugins: [
           'react-dev-locator',
-        ],
-      },
-    }),
-    VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
-      manifest: {
-        name: '今天吃什么',
-        short_name: '今天吃什么',
-        description: '帮你决定每天吃什么的菜谱管理应用',
-        theme_color: '#E8553A',
-        background_color: '#FEFBF6',
-        display: 'standalone',
-        orientation: 'portrait',
-        icons: [
-          { src: '/icon-192.png', sizes: '192x192', type: 'image/svg+xml' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' },
-        ],
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,jpg,jpeg,woff2}'],
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//, /^\/uploads\//],
-        runtimeCaching: [
-          {
-            urlPattern: /\/api\/recipes/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'recipes-api',
-              networkTimeoutSeconds: 10,
-              expiration: { maxEntries: 50, maxAgeSeconds: 3600 },
-            },
-          },
-          {
-            urlPattern: /\/api\/categories/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'categories-api',
-              networkTimeoutSeconds: 10,
-              expiration: { maxEntries: 10, maxAgeSeconds: 86400 },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/res\.cloudinary\.com/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'cloudinary-images',
-              expiration: { maxEntries: 100, maxAgeSeconds: 86400 * 30 },
-            },
-          },
         ],
       },
     }),
