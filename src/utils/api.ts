@@ -1,24 +1,46 @@
 const API_BASE = '/api';
 
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  // Vercel serverless cold start can take 20-60 seconds on free tier.
-  // Use a generous timeout to avoid false failures.
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+const COLD_START_RETRIES = 3;
+const RETRY_DELAY = 2000; // 2s between retries
 
-  try {
-    const res = await fetch(`${API_BASE}${url}`, {
-      ...options,
-      signal: controller.signal,
-    });
-    const data = await res.json();
-    if (!data.success) {
-      throw new Error(data.error || '请求失败');
+async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  for (let attempt = 1; attempt <= COLD_START_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s per attempt
+
+    try {
+      const res = await fetch(`${API_BASE}${url}`, {
+        ...options,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || '请求失败');
+      }
+      return data.data;
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+
+      // If this was the last attempt, throw
+      if (attempt === COLD_START_RETRIES) {
+        throw error;
+      }
+
+      // On network/timeout errors, retry (likely cold start)
+      if (error.name === 'AbortError' || error.name === 'TypeError' || error.message?.includes('Failed to fetch')) {
+        console.log(`Request failed (attempt ${attempt}/${COLD_START_RETRIES}), retrying in ${RETRY_DELAY}ms...`);
+        await new Promise(r => setTimeout(r, RETRY_DELAY));
+        continue;
+      }
+
+      // Other errors (e.g., 4xx), don't retry
+      throw error;
     }
-    return data.data;
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  throw new Error('请求失败');
 }
 
 export interface Ingredient {
