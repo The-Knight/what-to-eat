@@ -1,8 +1,4 @@
 import { createClient as createLibsqlClient, type Client as LibsqlClient } from '@libsql/client';
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 
 export interface QueryResult {
   rows: any[];
@@ -14,52 +10,6 @@ export interface DatabaseClient {
   isLocal(): boolean;
   getSync(sql: string, args?: any[]): any;
   runSync(sql: string, args?: any[]): { changes: number; lastInsertRowid: number };
-}
-
-class LocalClient implements DatabaseClient {
-  private db: Database.Database;
-
-  constructor() {
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    const rootDir = path.resolve(__dirname, '../..');
-    const dataDir = path.join(rootDir, 'data');
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-    this.db = new Database(path.join(dataDir, 'recipes.db'));
-    this.db.pragma('journal_mode = WAL');
-    this.db.pragma('foreign_keys = ON');
-  }
-
-  async execute(sql: string, args: any[] = []): Promise<QueryResult> {
-    const stmt = this.db.prepare(sql);
-    if (sql.trimStart().toUpperCase().startsWith('SELECT')) {
-      return { rows: stmt.all(...args) };
-    }
-    const result = stmt.run(...args);
-    return { rows: [{ changes: result.changes, lastInsertRowid: Number(result.lastInsertRowid) }] };
-  }
-
-  async batch(statements: { sql: string; args?: any[] }[]): Promise<void> {
-    const transaction = this.db.transaction(() => {
-      for (const stmt of statements) {
-        this.db.prepare(stmt.sql).run(...(stmt.args || []));
-      }
-    });
-    transaction();
-  }
-
-  isLocal(): boolean { return true; }
-
-  getSync(sql: string, args: any[] = []): any {
-    return this.db.prepare(sql).get(...args);
-  }
-
-  runSync(sql: string, args: any[] = []): { changes: number; lastInsertRowid: number } {
-    const result = this.db.prepare(sql).run(...args);
-    return { changes: result.changes, lastInsertRowid: Number(result.lastInsertRowid) };
-  }
 }
 
 class TursoClient implements DatabaseClient {
@@ -101,9 +51,65 @@ class TursoClient implements DatabaseClient {
   }
 }
 
+// Local SQLite client (only loaded when TURSO_URL is NOT set)
+let _localDb: any = null;
+
+function getLocalDb() {
+  if (!_localDb) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Database = require('better-sqlite3');
+    const path = require('path');
+    const fs = require('fs');
+
+    const rootDir = path.resolve(__dirname, '../..');
+    const dataDir = path.join(rootDir, 'data');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+
+    _localDb = new Database(path.join(dataDir, 'recipes.db'));
+    _localDb.pragma('journal_mode = WAL');
+    _localDb.pragma('foreign_keys = ON');
+  }
+  return _localDb;
+}
+
+function getLocalClient(): DatabaseClient {
+  return {
+    async execute(sql: string, args: any[] = []): Promise<QueryResult> {
+      const db = getLocalDb();
+      const stmt = db.prepare(sql);
+      if (sql.trimStart().toUpperCase().startsWith('SELECT')) {
+        return { rows: stmt.all(...args) };
+      }
+      const result = stmt.run(...args);
+      return { rows: [{ changes: result.changes, lastInsertRowid: Number(result.lastInsertRowid) }] };
+    },
+    async batch(statements: { sql: string; args?: any[] }[]): Promise<void> {
+      const db = getLocalDb();
+      const transaction = db.transaction(() => {
+        for (const stmt of statements) {
+          db.prepare(stmt.sql).run(...(stmt.args || []));
+        }
+      });
+      transaction();
+    },
+    isLocal(): boolean { return true; },
+    getSync(sql: string, args: any[] = []): any {
+      return getLocalDb().prepare(sql).get(...args);
+    },
+    runSync(sql: string, args: any[] = []): { changes: number; lastInsertRowid: number } {
+      const result = getLocalDb().prepare(sql).run(...args);
+      return { changes: result.changes, lastInsertRowid: Number(result.lastInsertRowid) };
+    },
+  };
+}
+
 export function createClient(): DatabaseClient {
+  // In Vercel (production), TURSO_URL is set → use Turso (no better-sqlite3 needed)
+  // Locally, TURSO_URL is not set → use local SQLite
   if (process.env.TURSO_URL) {
     return new TursoClient();
   }
-  return new LocalClient();
+  return getLocalClient();
 }
