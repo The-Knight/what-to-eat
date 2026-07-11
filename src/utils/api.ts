@@ -1,12 +1,24 @@
 const API_BASE = '/api';
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${url}`, options);
-  const data = await res.json();
-  if (!data.success) {
-    throw new Error(data.error || '请求失败');
+  // Vercel serverless cold start can take 20-60 seconds on free tier.
+  // Use a generous timeout to avoid false failures.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
+  try {
+    const res = await fetch(`${API_BASE}${url}`, {
+      ...options,
+      signal: controller.signal,
+    });
+    const data = await res.json();
+    if (!data.success) {
+      throw new Error(data.error || '请求失败');
+    }
+    return data.data;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return data.data;
 }
 
 export interface Ingredient {

@@ -23,6 +23,7 @@ export default function RecipeEdit() {
   const [dishType, setDishType] = useState<DishType>('荤菜');
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
 
   useEffect(() => {
     api.getCategories().then(setCategories);
@@ -48,6 +49,12 @@ export default function RecipeEdit() {
     }
 
     setSaving(true);
+    setSaveMessage('正在连接服务器...');
+
+    // Show progressive messages during long cold starts
+    const msgTimer1 = setTimeout(() => setSaveMessage('服务器启动中，请耐心等待...'), 5000);
+    const msgTimer2 = setTimeout(() => setSaveMessage('仍在保存中，请勿关闭页面...'), 15000);
+
     try {
       const data = {
         name: name.trim(),
@@ -68,8 +75,11 @@ export default function RecipeEdit() {
       }
       navigate('/');
     } catch (error) {
-      alert('保存失败，请重试');
+      alert('保存失败，请重试。如果多次失败，可能是服务器正在启动，请稍后再试。');
     } finally {
+      clearTimeout(msgTimer1);
+      clearTimeout(msgTimer2);
+      setSaveMessage('');
       setSaving(false);
     }
   };
@@ -191,10 +201,15 @@ export default function RecipeEdit() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-primary hover:bg-primary-dark text-white font-medium rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-primary/25 disabled:opacity-50"
+            className="w-full flex flex-col items-center justify-center gap-1 py-3 bg-primary hover:bg-primary-dark text-white font-medium rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-primary/25 disabled:opacity-50"
           >
-            <Save className="w-4 h-4" />
-            {saving ? '保存中...' : '保存菜谱'}
+            <div className="flex items-center gap-2">
+              <Save className="w-4 h-4" />
+              {saving ? '保存中...' : '保存菜谱'}
+            </div>
+            {saveMessage && (
+              <span className="text-xs text-white/80">{saveMessage}</span>
+            )}
           </button>
         </div>
       </main>
