@@ -4,10 +4,10 @@ import Navbar from '@/components/Navbar';
 import SearchBar from '@/components/SearchBar';
 import CategoryFilter from '@/components/CategoryFilter';
 import RecipeCard from '@/components/RecipeCard';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function Home() {
-  const { recipes, loading, fetchRecipes } = useStore();
+  const { recipes, loading, errorMsg, fetchRecipes } = useStore();
 
   useEffect(() => {
     fetchRecipes();
@@ -28,8 +28,21 @@ export default function Home() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <p className="text-sm text-brown-light">正在加载菜谱，首次可能需要等待几秒...</p>
+          </div>
+        ) : errorMsg ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <AlertCircle className="w-12 h-12 text-primary/40" />
+            <p className="text-brown-light">{errorMsg}</p>
+            <button
+              onClick={fetchRecipes}
+              className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              重新加载
+            </button>
           </div>
         ) : recipes.length === 0 ? (
           <div className="text-center py-20">

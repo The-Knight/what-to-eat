@@ -1,12 +1,12 @@
 const API_BASE = '/api';
 
 const COLD_START_RETRIES = 3;
-const RETRY_DELAY = 2000; // 2s between retries
+const RETRY_DELAY = 1500; // 1.5s between retries
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   for (let attempt = 1; attempt <= COLD_START_RETRIES; attempt++) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s per attempt
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s per attempt
 
     try {
       const res = await fetch(`${API_BASE}${url}`, {
@@ -30,12 +30,12 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
       // On network/timeout errors, retry (likely cold start)
       if (error.name === 'AbortError' || error.name === 'TypeError' || error.message?.includes('Failed to fetch')) {
-        console.log(`Request failed (attempt ${attempt}/${COLD_START_RETRIES}), retrying in ${RETRY_DELAY}ms...`);
+        console.log(`Request failed (attempt ${attempt}/${COLD_START_RETRIES}), retrying...`);
         await new Promise(r => setTimeout(r, RETRY_DELAY));
         continue;
       }
 
-      // Other errors (e.g., 4xx), don't retry
+      // Other errors, don't retry
       throw error;
     }
   }
