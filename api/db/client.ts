@@ -2,14 +2,14 @@ import { createClient as createLibsqlClient, type Client as LibsqlClient } from 
 
 export interface QueryResult {
   rows: any[];
+  lastInsertRowid?: number;
+  rowsAffected?: number;
 }
 
 export interface DatabaseClient {
   execute(sql: string, args?: any[]): Promise<QueryResult>;
   batch(statements: { sql: string; args?: any[] }[]): Promise<void>;
   isLocal(): boolean;
-  getSync(sql: string, args?: any[]): any;
-  runSync(sql: string, args?: any[]): { changes: number; lastInsertRowid: number };
 }
 
 class TursoClient implements DatabaseClient {
@@ -24,13 +24,17 @@ class TursoClient implements DatabaseClient {
 
   async execute(sql: string, args: any[] = []): Promise<QueryResult> {
     const result = await this.client.execute({ sql, args: args.map(a => a === null ? null : a) });
-    return { rows: result.rows.map(row => {
-      const obj: any = {};
-      for (const [key, value] of Object.entries(row)) {
-        obj[key] = typeof value === 'bigint' ? Number(value) : value;
-      }
-      return obj;
-    }) };
+    return {
+      rows: result.rows.map(row => {
+        const obj: any = {};
+        for (const [key, value] of Object.entries(row)) {
+          obj[key] = typeof value === 'bigint' ? Number(value) : value;
+        }
+        return obj;
+      }),
+      lastInsertRowid: typeof result.lastInsertRowid === 'bigint' ? Number(result.lastInsertRowid) : result.lastInsertRowid as number,
+      rowsAffected: result.rowsAffected,
+    };
   }
 
   async batch(statements: { sql: string; args?: any[] }[]): Promise<void> {
@@ -41,14 +45,6 @@ class TursoClient implements DatabaseClient {
   }
 
   isLocal(): boolean { return false; }
-
-  getSync(_sql: string, _args?: any[]): any {
-    throw new Error('Use execute() for Turso');
-  }
-
-  runSync(_sql: string, _args?: any[]): { changes: number; lastInsertRowid: number } {
-    throw new Error('Use execute() for Turso');
-  }
 }
 
 // Local SQLite client (only loaded when TURSO_URL is NOT set)
@@ -83,7 +79,11 @@ function getLocalClient(): DatabaseClient {
         return { rows: stmt.all(...args) };
       }
       const result = stmt.run(...args);
-      return { rows: [{ changes: result.changes, lastInsertRowid: Number(result.lastInsertRowid) }] };
+      return {
+        rows: [],
+        lastInsertRowid: Number(result.lastInsertRowid),
+        rowsAffected: result.changes,
+      };
     },
     async batch(statements: { sql: string; args?: any[] }[]): Promise<void> {
       const db = getLocalDb();
@@ -95,13 +95,6 @@ function getLocalClient(): DatabaseClient {
       transaction();
     },
     isLocal(): boolean { return true; },
-    getSync(sql: string, args: any[] = []): any {
-      return getLocalDb().prepare(sql).get(...args);
-    },
-    runSync(sql: string, args: any[] = []): { changes: number; lastInsertRowid: number } {
-      const result = getLocalDb().prepare(sql).run(...args);
-      return { changes: result.changes, lastInsertRowid: Number(result.lastInsertRowid) };
-    },
   };
 }
 

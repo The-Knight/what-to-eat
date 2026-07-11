@@ -45,7 +45,9 @@ app.use((_req: Request, res: Response) => {
   res.status(404).json({ success: false, error: 'API not found' });
 });
 
-// Initialize database on startup
-initDatabase().catch(console.error);
+// Only initialize database for local dev (Turso tables already exist from migration)
+if (db.isLocal()) {
+  initDatabase().catch(console.error);
+}
 
 export default app;

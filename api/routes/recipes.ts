@@ -89,7 +89,7 @@ router.post('/', async (req: Request, res: Response) => {
     dish_type || '荤菜'
   ]);
 
-  const insertedId = result.rows[0].lastInsertRowid;
+  const insertedId = result.lastInsertRowid;
   const recipeResult = await db.execute('SELECT * FROM recipes WHERE id = ?', [insertedId]);
   const recipe = recipeResult.rows[0];
 
@@ -152,7 +152,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
   const result = await db.execute('DELETE FROM recipes WHERE id = ?', [id]);
 
-  if (result.rows[0].changes === 0) {
+  if (result.rowsAffected === 0) {
     res.status(404).json({ success: false, error: '菜谱不存在' });
     return;
   }
