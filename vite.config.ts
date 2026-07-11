@@ -32,12 +32,15 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,jpeg,woff2}'],
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//, /^\/uploads\//],
         runtimeCaching: [
           {
             urlPattern: /\/api\/recipes/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'recipes-api',
+              networkTimeoutSeconds: 10,
               expiration: { maxEntries: 50, maxAgeSeconds: 3600 },
             },
           },
@@ -46,6 +49,7 @@ export default defineConfig({
             handler: 'NetworkFirst',
             options: {
               cacheName: 'categories-api',
+              networkTimeoutSeconds: 10,
               expiration: { maxEntries: 10, maxAgeSeconds: 86400 },
             },
           },

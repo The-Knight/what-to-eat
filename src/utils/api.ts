@@ -15,7 +15,18 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
       });
       clearTimeout(timeoutId);
 
-      const data = await res.json();
+      const text = await res.text();
+      if (!res.ok) {
+        throw new Error(`请求失败(${res.status})`);
+      }
+
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error('服务器返回了非JSON内容');
+      }
+
       if (!data.success) {
         throw new Error(data.error || '请求失败');
       }
@@ -30,7 +41,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
       // On network/timeout errors, retry (likely cold start)
       if (error.name === 'AbortError' || error.name === 'TypeError' || error.message?.includes('Failed to fetch')) {
-        console.log(`Request failed (attempt ${attempt}/${COLD_START_RETRIES}), retrying...`);
+        console.warn(`请求失败(第${attempt}次)，稍后重试...`);
         await new Promise(r => setTimeout(r, RETRY_DELAY));
         continue;
       }
